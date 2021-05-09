@@ -150,5 +150,6 @@ public class Elevator implements Runnable {
                 e.printStackTrace();
             }
         }
+        System.out.println("Elevator " + id + " stopped");
     }
 }

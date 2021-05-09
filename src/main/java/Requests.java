@@ -96,5 +96,6 @@ public class Requests implements Runnable {
                 e.printStackTrace();
             }
         }
+        System.out.println("Requests stopped");
     }
 }
