@@ -28,9 +28,9 @@ public class Elevator implements Runnable {
 
     private void move() {
         deletePersons();
+        checkBoundaryFloor();
         getPersons();
         if (!destinations.isEmpty()) {
-            isEmpty = false;
             checkDirection();
             if (direction == Directions.UP) {
                 if (floor < numOfFloors - 1) {
@@ -56,6 +56,14 @@ public class Elevator implements Runnable {
 
     public void off() {
         on = false;
+    }
+
+    private void checkBoundaryFloor() {
+        if (floor == 0) {
+            direction = Directions.UP;
+        } else if (floor == numOfFloors - 1) {
+            direction = Directions.DOWN;
+        }
     }
 
     private void checkDirection() {
@@ -86,7 +94,7 @@ public class Elevator implements Runnable {
             return;
         }
         synchronized (requests) {
-            while(manager.isBlockedFloor(floor)) {
+            while (manager.isBlockedFloor(floor)) {
                 try {
                     requests.wait();
                 } catch (InterruptedException e) {
@@ -95,19 +103,25 @@ public class Elevator implements Runnable {
             }
 
             manager.blockFloor(floor);
+            requests = manager.getRequests(floor);
             for (int i = 0; i < requests.size(); i++) {
-                if (destinations.isEmpty() || (getPersonDirection(requests.get(i)) == direction
-                        && getWorkload() + 1 <= maxWorkload)) {
-                    destinations.add(requests.get(i));
-                    requests.remove(i);
-                    i--;
-                }
-                if (getWorkload() == maxWorkload) {
-                    break;
+                try {
+                    if (isEmpty || (getPersonDirection(requests.get(i)) == direction
+                            && getWorkload() + 1 <= maxWorkload)) {
+                        isEmpty = false;
+                        destinations.add(requests.get(i));
+                        requests.remove(i);
+                        i--;
+                    }
+                    if (getWorkload() == maxWorkload) {
+                        break;
+                    }
+                } catch (NullPointerException e) {
+                    System.out.println("Request returns null, floor " + floor + " elevator " + id);
                 }
             }
             manager.unblockFloor(floor);
-            requests.notifyAll();
+            requests.notify();
         }
     }
 

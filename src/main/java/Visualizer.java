@@ -57,11 +57,23 @@ public class Visualizer {
             ArrayList<Character> line = matrix.get(y);
             line.add('<');
             LinkedList<Integer> request = requests.getRequests(floor);
+            if (request == null || request.isEmpty()) {
+                continue;
+            }
             synchronized (request) {
                 requests.blockFloor(floor);
+                request = requests.getRequests(floor);
                 for (int i = 0; i < request.size(); i++) {
-                    for (char ch : Integer.toString(request.get(i)).toCharArray()) {
-                        line.add(ch);
+                    try {
+                        for (char ch : Integer.toString(request.get(i)).toCharArray()) {
+                            line.add(ch);
+                        }
+                    } catch (NullPointerException e) {
+                        line.add('0');
+                        for (int j = 1; j < elevatorXSize; j++) {
+                            line.add(' ');
+                        }
+                        System.out.println("Request returns null, floor " + floor + " visualization");
                     }
                     line.add(' ');
                 }

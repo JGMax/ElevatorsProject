@@ -91,7 +91,7 @@ public class Requests implements Runnable {
         while(makeRequests) {
             generate(rnd);
             try {
-                Thread.sleep(10);
+                Thread.sleep(1);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
