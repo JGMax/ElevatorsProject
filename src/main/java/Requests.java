@@ -5,6 +5,7 @@ public class Requests implements Runnable {
     private int numOfFloors = 0;
     private final ArrayList<LinkedList<Integer>> requests = new ArrayList<>();
     private final ArrayList<Boolean> blocks = new ArrayList<>();
+    private int requestsDelay = 1;
 
     private Requests() {}
     public static class SingletonHolder {
@@ -15,7 +16,7 @@ public class Requests implements Runnable {
         return Requests.SingletonHolder.HOLDER_INSTANCE;
     }
 
-    public void blockFloor(int floor) {
+    public synchronized void blockFloor(int floor) {
         blocks.set(floor, true);
     }
 
@@ -23,8 +24,16 @@ public class Requests implements Runnable {
         return blocks.get(floor);
     }
 
-    public void unblockFloor(int floor) {
+    public synchronized void unblockFloor(int floor) {
         blocks.set(floor, false);
+    }
+
+    public ArrayList<LinkedList<Integer>> getRequests() {
+        return requests;
+    }
+
+    public void setRequestsDelay(int delay) {
+        requestsDelay = delay;
     }
 
     public void block() {
@@ -42,6 +51,7 @@ public class Requests implements Runnable {
     public void setNumOfFloors(int numOfFloors) {
         this.numOfFloors = numOfFloors;
         requests.clear();
+        blocks.clear();
         for (int i = 0; i < numOfFloors; i++) {
             requests.add(new LinkedList<>());
             blocks.add(false);
@@ -72,16 +82,32 @@ public class Requests implements Runnable {
     }
 
     private void generate(Random rnd) {
-        int floorIndex = rnd.nextInt(requests.size());
-        while(blocks.get(floorIndex)) {
-            floorIndex = rnd.nextInt(requests.size());
+        cleanNulls();
+        ArrayList<Integer> unblockedFloors = new ArrayList<>();
+        for (int i = 0; i < blocks.size(); i++) {
+            if (!blocks.get(i)) {
+                unblockedFloors.add(i);
+            }
         }
+
+        if (unblockedFloors.size() < 1) {
+            return;
+        }
+
+        int idx = rnd.nextInt(unblockedFloors.size());
+        int floorIndex = unblockedFloors.get(idx);
         int destinationIndex = rnd.nextInt(numOfFloors);
-        while(destinationIndex == floorIndex) {
+        while (destinationIndex == floorIndex) {
             destinationIndex = rnd.nextInt(numOfFloors);
         }
         synchronized (this) {
             requests.get(floorIndex).add(destinationIndex);
+        }
+    }
+
+    private void cleanNulls() {
+        for (LinkedList<Integer> request : requests) {
+            request.remove(null);
         }
     }
 
@@ -91,7 +117,7 @@ public class Requests implements Runnable {
         while(makeRequests) {
             generate(rnd);
             try {
-                Thread.sleep(1);
+                Thread.sleep(requestsDelay);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

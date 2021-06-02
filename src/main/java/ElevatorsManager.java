@@ -6,17 +6,24 @@ import java.util.concurrent.Executors;
 public class ElevatorsManager {
     private final Requests requests = Requests.get();
     private final ArrayList<Elevator> elevators = new ArrayList<>();
-    private final int workTime;
 
-    ElevatorsManager(int numOfElevators, int maxWorkload, int numOfFloors, int workTime) {
-        Visualizer.get().createMatrix(numOfFloors, numOfElevators, maxWorkload);
+    ElevatorsManager(int numOfElevators, int maxWorkload, int numOfFloors, int requestsDelay, int elevatorDelay) {
+        requests.setRequestsDelay(requestsDelay);
         for (int i = 0; i < numOfElevators; i++) {
-            elevators.add(new Elevator(i, maxWorkload, numOfFloors, this));
+            elevators.add(new Elevator(i, maxWorkload, numOfFloors, this, elevatorDelay));
             Visualizer.get().updateElevator(i, 0, 0);
         }
-        Visualizer.get().show();
         requests.setNumOfFloors(numOfFloors);
-        this.workTime = workTime;
+    }
+
+    public void setRequestsDelay(int requestsDelay) {
+        requests.setRequestsDelay(requestsDelay);
+    }
+
+    public void setElevatorDelay(int elevatorDelay) {
+        for (Elevator elevator : elevators) {
+            elevator.setElevatorDelay(elevatorDelay);
+        }
     }
 
     public synchronized int getLargestFloor() {
@@ -65,29 +72,27 @@ public class ElevatorsManager {
         return requests.getNumOfFloors();
     }
 
-    public void on() {
+    public void start() {
         Executor ex = Executors.newFixedThreadPool(elevators.size() + 1);
-
-        requests.on();
+        for (Elevator e : elevators) {
+            ex.execute(e);
+        }
         ex.execute(requests);
+        on();
+    }
+
+    private void on() {
+        requests.on();
 
         for (Elevator e : elevators) {
             e.on();
-            ex.execute(e);
         }
+    }
 
-        if (workTime >= 0) {
-            try {
-                Thread.sleep(workTime);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            for (Elevator e : elevators) {
-                e.off();
-            }
-
-            requests.off();
+    void off() {
+        requests.off();
+        for (Elevator e : elevators) {
+            e.off();
         }
     }
 }

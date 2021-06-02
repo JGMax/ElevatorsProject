@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 
 public class Elevator implements Runnable {
     private final int id;
@@ -11,12 +12,18 @@ public class Elevator implements Runnable {
     private final int numOfFloors;
     private volatile boolean on = true;
     private boolean isEmpty = true;
+    private int elevatorDelay;
 
-    Elevator(int id, int maxWorkload, int numOfFloors, ElevatorsManager manager) {
+    Elevator(int id, int maxWorkload, int numOfFloors, ElevatorsManager manager, int elevatorDelay) {
         this.maxWorkload = maxWorkload;
         this.manager = manager;
         this.id = id;
         this.numOfFloors = numOfFloors;
+        this.elevatorDelay = elevatorDelay;
+    }
+
+    public void setElevatorDelay(int elevatorDelay) {
+        this.elevatorDelay = elevatorDelay;
     }
 
     public int getWorkload() {
@@ -87,23 +94,26 @@ public class Elevator implements Runnable {
         destinations.removeIf(it -> floor == it);
     }
 
-    private void getPersons() {
-        LinkedList<Integer> requests = manager.getRequests(floor);
-
-        if (requests == null || requests.isEmpty()) {
-            return;
-        }
-        synchronized (requests) {
+    private synchronized void getPersons() {
+        synchronized (manager.getRequests()) {
+            boolean wasWaited = false;
             while (manager.isBlockedFloor(floor)) {
                 try {
-                    requests.wait();
+                    manager.getRequests().wait();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                System.out.println("Elevator " + id + " is waiting");
+                wasWaited = true;
+            }
+
+            if (wasWaited) {
+                System.out.println("Elevator " + id + " is working");
             }
 
             manager.blockFloor(floor);
-            requests = manager.getRequests(floor);
+            LinkedList<Integer> requests = manager.getRequests(floor);
+            requests.remove(null);
             for (int i = 0; i < requests.size(); i++) {
                 try {
                     if (isEmpty || (getPersonDirection(requests.get(i)) == direction
@@ -116,12 +126,12 @@ public class Elevator implements Runnable {
                     if (getWorkload() == maxWorkload) {
                         break;
                     }
-                } catch (NullPointerException e) {
+                } catch (Exception e) {
                     System.out.println("Request returns null, floor " + floor + " elevator " + id);
                 }
             }
             manager.unblockFloor(floor);
-            requests.notify();
+            manager.getRequests().notifyAll();
         }
     }
 
@@ -138,18 +148,36 @@ public class Elevator implements Runnable {
         while(on) {
             move();
             synchronized (Visualizer.get()) {
-                System.out.println();
                 Visualizer.get().updateElevator(id, floor, getWorkload());
-                Visualizer.get().updateRequests(manager.getRequests());
-                Visualizer.get().show();
-                System.out.println();
+                synchronized (manager.getRequests()) {
+                    Visualizer.get().updateRequests(copy(manager.getRequests().getRequests()));
+                }
             }
             try {
-                Thread.sleep(20);
+                Thread.sleep(elevatorDelay);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
         System.out.println("Elevator " + id + " stopped");
+    }
+
+    private synchronized List<List<Integer>> copy(ArrayList<LinkedList<Integer>> list) {
+        ArrayList<List<Integer>> clone = new ArrayList<>();
+        for (int i = 0; i < list.size(); i++) {
+            synchronized (list.get(i)) {
+                LinkedList<Integer> innerClone = new LinkedList<>();
+                LinkedList<Integer> inner = list.get(i);
+                if (inner != null) {
+                    for (int j = 0; j < inner.size(); j++) {
+                        try {
+                            innerClone.add(inner.get(j));
+                        } catch (NullPointerException e) { }
+                    }
+                }
+                clone.add(innerClone);
+            }
+        }
+        return clone;
     }
 }
