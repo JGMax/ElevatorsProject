@@ -37,8 +37,6 @@ public class Visualizer {
     private final ArrayList<Label> requestsList = new ArrayList<>();
 
     private final Button commitButton = new Button("Commit");
-    private final Button startButton = new Button("Resume");
-    private final Button stopButton = new Button("Pause");
 
     private final Label errorLabel = new Label();
 
@@ -70,17 +68,6 @@ public class Visualizer {
         setALLPosition(gridPane, HPos.CENTER, VPos.BOTTOM);
         commitButton.setOnAction(event -> resetMatrix());
 
-        startButton.setOnAction(event -> {
-            if (manager != null) {
-                manager.start();
-            }
-        });
-
-        stopButton.setOnAction(event -> {
-            if (manager != null) {
-                manager.off();
-            }
-        });
         return gridPane;
     }
 
@@ -121,12 +108,8 @@ public class Visualizer {
 
         gridPane.add(commitButton, columnIndex, 10);
 
-        gridPane.add(startButton, columnIndex, 11);
-
-        gridPane.add(stopButton, columnIndex, 12);
-
         errorLabel.setTextFill(Color.RED);
-        gridPane.add(errorLabel, columnIndex, 13);
+        gridPane.add(errorLabel, columnIndex, 11);
     }
 
     private void setALLPosition(GridPane gridPane, HPos horizontalPos, VPos verticalPos) {
